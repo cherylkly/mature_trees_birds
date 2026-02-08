@@ -1,0 +1,1217 @@
+---
+title: "Analysis and Plots"
+author: "Cheryl Yong"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overall Description
+
+Running generalised linear mixed models, model selections and plotting predictions
+  
+Data needed: 
+
+* cleaned_model_data.csv
+
+# 1. Load Packages
+```{r}
+library(glmmTMB)
+library(MuMIn)
+library(ggplot2)
+library(buildmer)
+library(dplyr)
+library(MASS)
+
+library(DHARMa)
+library(performance)
+
+library(ggplot2)
+library(ggeffects)
+library(cowplot)
+library(ggpubr) # to extract legend
+library(sjPlot)
+
+library(Cairo)
+library(modelsummary)
+
+```
+
+# 2. Load Data
+## 2.1. Data Description
+Survey Variables
+* site_id
+* survey_no
+
+Outcome Variables
+* sp_rich               Overall species richness
+* overall_abundance,    Overall abundance
+* hollow_sp_rich        Overall species richness of hollow-dependent species
+* hollow_use_abundance  Overall abdunance of hollow-dependent species
+
+
+Predictor Variables:
+* big_tree_count:       Number of mature trees within the site
+* rw_pres:              Presence of red wattlebird
+* p_ground_grass:       Vegetation cover between 0-0.1m in height (%)
+* p_low_shrubs:         Vegetation cover between 0.1-1m in height (%)
+* p_midstorey:          Vegetation cover between 1-5m in height (%)
+* area:                 Area (ha)
+* tree_canopy_pct_200m: Proportion of canopy cover in a 200m buffer
+* mt_count_200m:        Number of mature trees in a 200m buffer
+* built_pct_200m:       Proportion of impervious surface cover in a 200m buffer (%)
+* suburb:               Suburb
+* dev_status:           Development status
+
+
+Predictors excluded from model due to high correlation:
+* total_tree_count:   Number of trees within the site
+* hollow_count:       Number of tree hollows
+* shape_idx:          Shape Index
+* road_traffic:       Largest adjacent road type
+
+## 2.2. Load and Format Data
+```{r}
+
+model_data_input <- read.csv("./input_data/cleaned_model_data.csv")
+
+model_data_input$site_id <- as.factor(model_data_input$site_id)
+model_data_input$rw_pres <- as.factor(model_data_input$rw_pres)
+model_data_input$suburb <- as.factor(model_data_input$suburb)
+
+```
+
+# 3. Model Selection
+## 3.1. Overall species richness (SR) and abundance (Ab)
+```{r}
+
+build_SR <-  buildglmmTMB(sp_rich ~ scale(big_tree_count) + scale(mt_count_200m) +
+                           scale(p_ground_grass) + scale(p_low_shrubs) + scale(p_midstorey) +
+                           scale(built_pct_200m) + scale(area) + scale(tree_canopy_pct_200m) +
+                           rw_pres + suburb + dev_status +
+                           (1|site_id),
+                           data = model_data_input,
+                           family = poisson(link = 'log'),
+                           buildmerControl = buildmerControl(crit = "AIC",
+                                                             REML = T,
+                                                             include = "(1|site_id)"))
+summary(build_SR)
+
+build_Ab <-  buildglmmTMB(overall_abundance ~ scale(big_tree_count) + scale(mt_count_200m) +
+                           scale(p_ground_grass) + scale(p_low_shrubs) + scale(p_midstorey) +
+                           scale(built_pct_200m) + scale(area) + scale(tree_canopy_pct_200m) +
+                           rw_pres + suburb + dev_status +
+                           (1|site_id),
+                           data = model_data_input,
+                           family = poisson(link = 'log'),
+                           buildmerControl = buildmerControl(crit = "AIC",
+                                                             REML = T,
+                                                             include = "(1|site_id)"))
+
+summary(build_Ab)
+
+build_Ab_hurdle <-  buildglmmTMB(overall_abundance ~ scale(big_tree_count) + scale(mt_count_200m) +
+                           scale(p_ground_grass) + scale(p_low_shrubs) + scale(p_midstorey) +
+                           scale(built_pct_200m) + scale(area) + scale(tree_canopy_pct_200m) +
+                           #sc_road_traffic + 
+                           rw_pres + suburb + dev_status +
+                           (1|site_id),
+                           data = model_data_input,
+                           family = truncated_poisson(link = 'log'),
+                           buildmerControl = buildmerControl(args = list(ziformula = ~.),
+                                                             crit = "AIC",
+                                                             REML = T,
+                                                             include = "(1|site_id)"))
+
+summary(build_Ab_hurdle)
+
+```
+
+
+## 3.2. Hollow-dependent species richness (HSR) and abundance (HAb)
+```{r}
+build_HSR <-  buildglmmTMB(hollow_sp_rich ~ scale(big_tree_count) + scale(mt_count_200m) +
+                           # sc_p_ground_grass + sc_p_low_shrubs + sc_p_midstorey +
+                           scale(built_pct_200m) + scale(area) + scale(tree_canopy_pct_200m) +
+                           #sc_road_traffic + 
+                            rw_pres + suburb + dev_status +
+                           (1|site_id),
+                           data = model_data_input,
+                           family = poisson(link = 'log'),
+                           buildmerControl = buildmerControl(crit = "AIC",
+                                                             REML = T,
+                                                             include = "(1|site_id)"))
+summary(build_HSR)
+
+build_HAb <-  buildglmmTMB(hollow_use_abundance ~ scale(big_tree_count) + scale(mt_count_200m) +
+                     # sc_p_ground_grass + sc_p_low_shrubs + sc_p_midstorey +
+                     scale(built_pct_200m) + scale(area) + scale(tree_canopy_pct_200m) +
+                     #sc_road_traffic + 
+                      rw_pres + suburb + dev_status +
+                     (1|site_id),
+                     data = model_data_input,
+                     family = poisson(link = 'log'),
+                     buildmerControl = buildmerControl(crit = "AIC",
+                                                       REML = T,
+                                                       include = "(1|site_id)"))
+summary(build_HAb)
+
+        
+build_HAb_hurdle <-  buildglmmTMB(hollow_use_abundance ~ scale(big_tree_count) + scale(mt_count_200m) +
+                     # sc_p_ground_grass + sc_p_low_shrubs + sc_p_midstorey +
+                     scale(built_pct_200m) + scale(area) + scale(tree_canopy_pct_200m) +
+                     #sc_road_traffic + 
+                      rw_pres + suburb + dev_status +
+                     (1|site_id),
+                   data = model_data_input,
+                   family = truncated_poisson(link = 'log'),
+                   buildmerControl = buildmerControl(args = list(ziformula = ~.),
+                                                     crit = "AIC",
+                                                     REML = T,
+                                                     include = "(1|site_id)"))
+
+summary(build_HAb_hurdle)
+
+```
+# 4. Best models
+## 4.1. SR - Normal - all ok
+```{r}
+# Scaled model
+SR_model <- glmmTMB(sp_rich ~ scale(big_tree_count) + scale(area) +
+                             (1|site_id),
+                 data = model_data_input,                     
+                 family = poisson(link = 'log'))
+
+summary(SR_model)
+
+# Model Diagnostics
+plot(simulateResiduals(fittedModel = SR_model, n = 10000), rank = T) # looks ok
+performance(SR_model)
+check_collinearity(SR_model) # Low correlation
+check_zeroinflation(SR_model) # Overfitting zeroes
+check_overdispersion(SR_model) # No overdispersion detected
+
+```
+
+## 4.2. Ab - Normal - Zero inflation
+```{r}
+# Scaled model
+Ab_model <- glmmTMB(overall_abundance ~ scale(big_tree_count) + scale(area) +
+                             (1|site_id),
+                 data = model_data_input,                     
+                 family = poisson(link = 'log'))
+
+summary(Ab_model)
+
+plot(simulateResiduals(fittedModel = Ab_model, n = 10000), rank = T) # looks ok
+performance(Ab_model)
+check_collinearity(Ab_model) # Low correlation
+
+check_zeroinflation(Ab_model) 
+  # Model is underfitting zeros (probable zero-inflation) - for non hurdle model
+
+check_overdispersion(Ab_model) # No overdispersion detected
+```
+
+## 4.2.1. Ab - Hurdle - all ok
+```{r}
+# Scaled model
+Ab_model_hurdle <- glmmTMB(overall_abundance ~ scale(area) +
+                             (1|site_id),
+                    ziformula = ~.,
+                 data = model_data_input,                     
+                 family = truncated_poisson(link = 'log'))
+
+summary(Ab_model_hurdle)
+
+plot(simulateResiduals(fittedModel = Ab_model_hurdle, n = 10000), rank = T) # looks ok
+performance(Ab_model_hurdle)
+# check_collinearity(Ab_model_hurdle) # only 1 variable, not needed
+
+# check_zeroinflation(Ab_model_hurdle) # fnc not compatible w hurdle models
+testZeroInflation(Ab_model_hurdle) # from DHARMa, ratioObsSim <1 means less zeros than expected
+
+check_overdispersion(Ab_model_hurdle) # No overdispersion detected
+```
+## 4.3. HSR - Normal - ok though overfit zero
+```{r}
+HSR_model <- glmmTMB(hollow_sp_rich ~ scale(big_tree_count) + suburb +
+                             (1|site_id),
+                 data = model_data_input,                     
+                 family = poisson(link = 'log'))
+
+summary(HSR_model)
+
+plot(simulateResiduals(fittedModel = HSR_model, n = 10000), rank = T) # Looks ok
+performance(HSR_model)
+check_collinearity(HSR_model) # low correlation
+check_zeroinflation(HSR_model) # overfitting; ratio = 1.07
+check_overdispersion(HSR_model) # No overdispersion detected
+```
+
+## 4.4. HAb - Normal - zeroinflation, overdispersed
+```{r}
+HAb_model <- glmmTMB(hollow_use_abundance ~ scale(mt_count_200m) +
+                       scale(area) + suburb +
+                             (1|site_id),
+                 data = model_data_input,                     
+                 family = poisson(link = 'log'))
+
+summary(HAb_model)
+
+plot(simulateResiduals(fittedModel = HAb_model, n = 10000), rank = T)# looks ok
+performance(HAb_model)
+check_collinearity(HAb_model) #Low correlation
+check_zeroinflation(HAb_model) # zero inflated
+check_overdispersion(HAb_model) # Overdispersed
+
+
+```
+## 4.4.1. HAb - Hurdle - all ok
+```{r}
+HAb_model_hurdle <- glmmTMB(hollow_use_abundance ~ scale(big_tree_count) + suburb + scale(area) +  
+                              scale(mt_count_200m) +
+                             (1|site_id),
+                            ziformula = ~.,
+                 data = model_data_input,                     
+                 family = truncated_poisson(link = 'log'))
+
+summary(HAb_model_hurdle)
+
+
+plot(simulateResiduals(fittedModel = HAb_model_hurdle, n = 10000), rank = T)# looks ok
+performance(HAb_model_hurdle)
+check_collinearity(HAb_model_hurdle) #Low correlation
+# check_zeroinflation(HAb_model_hurdle) # fnc not compatible w hurdle models
+testZeroInflation(HAb_model_hurdle) # from DHARMa, ratioObsSim <1 means less zeros than expected
+check_overdispersion(HAb_model_hurdle) # No overdispersion
+```
+
+
+
+# 5. Prediction Plots
+Best model list:
+SR_model
+Ab_model_hurdle
+HSR_model
+HAb_model_hurdle
+
+## 5.1. Species Richness
+### 5.1.1. SR - Mature Trees
+```{r}
+# Get model predictions for ggplot
+SR_mt_pred <- get_model_data(SR_model, type="pred", terms = "big_tree_count[0:5 by =0.5]") %>%
+  data.frame()
+
+SR_mt_predplot <- 
+  ggplot(aes(x = x, y= predicted),
+       data = SR_mt_pred) +
+  geom_smooth(colour = "black") +
+  geom_ribbon(aes(ymin = conf.low,
+                  ymax = conf.high),
+              data = SR_mt_pred,
+              inherit.aes = TRUE,
+              linetype=2,
+              alpha=0.25) +
+  xlab("Number of mature trees in site") +
+  ylab("Richness") +
+  ylim(0,10) +
+  theme_bw()
+
+SR_mt_predplot
+
+```
+### 5.1.2. SR - Area
+```{r}
+SR_area_pred <- get_model_data(SR_model, 
+                               type="pred", 
+                               terms = "area[0:4866 by = 50]")
+
+
+SR_area_predplot <- 
+  ggplot(aes(x = x/10000, y= predicted),
+       data = SR_area_pred) +
+  geom_smooth(colour = "black") +
+  geom_ribbon(aes(ymin = conf.low,
+                  ymax = conf.high),
+              data = SR_area_pred,
+              inherit.aes = TRUE,
+              linetype=2,
+              alpha=0.25) +
+  xlab("Site area (ha) ") +
+  #xlab(bquote("Site area " (m^2))) +
+  ylab("Richness") +
+  ylim(0,10) +
+  theme_bw()
+
+SR_area_predplot
+
+```
+### 5.1.3. SR - Plots together
+```{r}
+SR_plots <- ggarrange(SR_mt_predplot, SR_area_predplot, ncol =2)
+
+
+SR_final <- annotate_figure(SR_plots, top = text_grob("Species richness", 
+               color = "black", face = "bold", size = 14))
+
+SR_final
+
+```
+## 5.2. Overall abundance
+### 5.2.1. Ab - Area (generating predictions)
+Posisble reference for justifying and explaining hurdle models: https://link.springer.com/article/10.1007/s10980-015-0215-3
+
+```{r}
+# New data
+Ab_area_new_data <- expand.grid(area = seq(0,4866,200),
+                                site_id = NA)
+
+#Ab_area_new_data <- data.frame(area = seq(0,4000,200))
+
+# Hurdle component
+Ab_area_pred_hurdle <- stats::predict(Ab_model_hurdle, type="zlink",
+                                      # zlink gives logit scale for pred values
+                                      # can use plogis to transform 
+                                      # for probability pred and CI
+                                      # checked zprob gives same as plogis(zlink pred)
+                               newdata = Ab_area_new_data,
+                              se.fit=TRUE) %>%
+                      data.frame() %>%
+                      mutate(area = Ab_area_new_data$area) %>%
+                      mutate(fit_plogis = plogis(fit),
+                             conf.low_plogis = plogis(fit - 1.96*se.fit),
+                             conf.high_plogis = plogis(fit + 1.96*se.fit))
+
+
+# Conditional component
+Ab_area_pred_conditional <- predict(Ab_model_hurdle, type="conditional",
+                                    newdata = Ab_area_new_data,
+                                    se.fit=TRUE) %>%
+                            data.frame() %>%
+                            mutate(area = Ab_area_new_data$area) %>%
+                            mutate(conf.low = (fit - qnorm(0.975) * se.fit),
+                             conf.high =(fit + qnorm(0.975) * se.fit))
+
+# Overall
+# Ab_area_pred_overall <- predict(Ab_model_hurdle, type="response",
+#                                 newdata = Ab_area_new_data,
+#                                 se.fit=TRUE) %>%
+#                                 data.frame() %>%
+#                                 mutate(area = Ab_area_new_data$area) %>%
+#                       mutate(conf.low = (fit - qnorm(0.975) * se.fit),
+#                              conf.high =(fit + qnorm(0.975) * se.fit))
+
+
+
+```
+
+
+### 5.2.2. Ab - Area (Probability of a zero)
+```{r}
+
+Ab_area_predplot_hurdle <- 
+  ggplot(aes(x = area/10000, y= fit_plogis),
+       data = Ab_area_pred_hurdle) +
+  geom_smooth(colour = "black") +
+  geom_ribbon(aes(ymin = conf.low_plogis,
+                  ymax = conf.high_plogis),
+              inherit.aes = TRUE,
+              linetype=2,
+              alpha=0.25) +
+  xlab("Site area (ha) ") +
+  #xlab(bquote("Site area " (m^2))) +
+  ylab("Probability of zero abundance") +
+  ylim(0,1) +
+  theme_bw()
+
+Ab_area_predplot_hurdle
+```
+
+### 5.2.3. Ab - Area (Non-zero abundances - conditional)
+```{r}
+
+Ab_area_predplot_conditional <- 
+  ggplot(aes(x = area/10000, y= fit),
+       data = Ab_area_pred_conditional) +
+  geom_smooth(colour = "black") +
+  geom_ribbon(aes(ymin = conf.low,
+                  ymax = conf.high),
+              inherit.aes = TRUE,
+              linetype=2,
+              alpha=0.25) +
+  xlab("Site area (ha) ") +
+  #xlab(bquote("Site area " (m^2))) +
+  ylab("Abundance") +
+  #ylim(0,1) +
+  theme_bw()
+
+Ab_area_predplot_conditional
+```
+### 5.2.4. Ab - Plots together
+```{r}
+
+Ab_plots <- ggarrange(Ab_area_predplot_hurdle,Ab_area_predplot_conditional)
+
+
+Ab_final <- annotate_figure(Ab_plots, top = text_grob("Abundance", 
+               color = "black", face = "bold", size = 14))
+
+Ab_final
+
+
+```
+## All species - richness and abundance plots
+
+```{r}
+SRnAB_plots <- ggarrange(SR_final, Ab_final, ncol =1)
+
+SRnAB_final <- annotate_figure(SRnAB_plots, top = text_grob("Overall species diversity", 
+               color = "black", face = "bold", size = 16))
+
+SRnAB_final
+
+```
+
+
+
+
+## 5.3. Hollow Species Richness
+### 5.3.1. HSR - Mature Trees only
+```{r}
+
+HSR_mt_pred <- get_model_data(HSR_model, type="pred", 
+                              terms = c("big_tree_count[0:5 by =0.5]")) %>%
+               data.frame()
+
+
+HSR_mt_predplot <- 
+  ggplot(aes(x = x, y= predicted),
+       data = HSR_mt_pred) +
+  geom_smooth(colour = "black") +
+  geom_ribbon(aes(ymin = conf.low,
+                  ymax = conf.high),
+              data = HSR_mt_pred,
+              inherit.aes = TRUE,
+              linetype=2,
+              alpha=0.25) +
+  xlab("Number of mature trees in site") +
+  ylab("Richness") +
+  ylim(0,16) +
+  theme_bw()
+
+HSR_mt_predplot
+
+```
+
+### 5.3.2. HSR - Suburb only
+```{r}
+
+HSR_suburb_pred <- get_model_data(HSR_model, type="pred", 
+                              terms = c("suburb")) %>%
+               data.frame() %>%
+  mutate(suburb = recode(x,
+                      "1" = "Casey",
+                      "2" = "MacGregor",
+                      "3" = "Strathnairn"))
+
+
+HSR_suburb_predplot <- 
+  ggplot(aes(x = suburb, y= predicted),
+       data = HSR_suburb_pred) +
+  geom_col(colour = "black",
+         fill = "grey88") +
+  geom_errorbar(aes(ymin=conf.low, ymax=conf.high), width=.2,
+                 colour = "black",
+                 position=position_dodge(.9),
+                 inherit.aes = T,
+                 data = HSR_suburb_pred) +
+  xlab("Suburb") +
+  ylab("Richness") +
+  ylim(0,5) +
+  #labs(colour = "Suburb") +
+  theme_bw()
+
+HSR_suburb_predplot
+```
+
+### 5.2.3. HSR - Plots together
+```{r}
+HSR_plots <- ggarrange(HSR_mt_predplot,HSR_suburb_predplot, ncol = 2)
+
+HSR_final <- annotate_figure(HSR_plots, top = text_grob("Hollow-dependent species richness", 
+               color = "black", face = "bold", size = 14))
+
+HSR_final
+
+```
+
+
+## 5.4. Hollow Species Abundance
+### 5.4.1. HAb - Area
+#### 5.4.1a HAb - Area (generating predictions)
+```{r}
+# New data
+HAb_area_new_data <- expand.grid(area = seq(0,4866,200),
+                                big_tree_count = mean(model_data_input$big_tree_count),
+                                mt_count_200m = mean(model_data_input$mt_count_200m),
+                                suburb = "Casey",
+                                site_id = NA)
+
+#Ab_area_new_data <- data.frame(area = seq(0,4000,200))
+
+# Hurdle component
+HAb_area_pred_hurdle <- predict(HAb_model_hurdle, type="zlink",
+                                      # zlink gives logit scale for pred values
+                                      # can use plogis to transform 
+                                      # for probability pred and CI
+                                      # checked zprob gives same as plogis(zlink pred)
+                               newdata = HAb_area_new_data,
+                              se.fit=TRUE) %>%
+                      data.frame() %>%
+                      mutate(area = HAb_area_new_data$area) %>%
+                      mutate(fit_plogis = plogis(fit),
+                             conf.low_plogis = plogis(fit - 1.96*se.fit),
+                             conf.high_plogis = plogis(fit + 1.96*se.fit))
+
+
+# Conditional component
+HAb_area_pred_conditional <- predict(HAb_model_hurdle, type="conditional",
+                                    newdata = HAb_area_new_data,
+                                    se.fit=TRUE) %>%
+                            data.frame() %>%
+                            mutate(area = HAb_area_new_data$area) %>%
+                            mutate(conf.low = (fit - qnorm(0.975) * se.fit),
+                             conf.high =(fit + qnorm(0.975) * se.fit))
+
+```
+
+
+#### 5.4.1b HAb - Area (Probability of a zero)
+```{r}
+
+HAb_area_predplot_hurdle <- 
+  ggplot(aes(x = area/10000, y= fit_plogis),
+       data = HAb_area_pred_hurdle) +
+  geom_smooth(colour = "black") +
+  geom_ribbon(aes(ymin = conf.low_plogis,
+                  ymax = conf.high_plogis),
+              inherit.aes = TRUE,
+              linetype=2,
+              alpha=0.25) +
+  xlab("Site area (ha) ") +
+  #xlab(bquote("Site area " (m^2))) +
+  ylab("Probability of zero abundance") +
+  ylim(0,1) +
+  theme_bw()
+
+HAb_area_predplot_hurdle
+```
+
+#### 5.4.1c HAb - Area (Non-zero abundances - conditional)
+```{r}
+
+HAb_area_predplot_conditional <- 
+  ggplot(aes(x = area/10000, y= fit),
+       data = HAb_area_pred_conditional) +
+  geom_smooth(colour = "black") +
+  geom_ribbon(aes(ymin = conf.low,
+                  ymax = conf.high),
+              inherit.aes = TRUE,
+              linetype=2,
+              alpha=0.25) +
+  xlab("Site area (ha) ") +
+  #xlab(bquote("Site area " (m^2))) +
+  ylab("Abundance") +
+  #ylim(0,1) +
+  theme_bw()
+
+HAb_area_predplot_conditional
+```
+### 5.4.2. HAb - Mature trees on site
+#### 5.4.21 HAb - Mature trees on site (generating predictions)
+```{r}
+# New data
+HAb_mt_new_data <- expand.grid(area = mean(model_data_input$area),
+                                big_tree_count = seq(min(model_data_input$big_tree_count),
+                                                     max(model_data_input$big_tree_count),
+                                                     0.5),
+                                mt_count_200m = mean(model_data_input$mt_count_200m),
+                                suburb = "Casey",
+                                site_id = NA)
+
+#Ab_area_new_data <- data.frame(area = seq(0,4000,200))
+
+# Hurdle component
+HAb_mt_pred_hurdle <- predict(HAb_model_hurdle, type="zlink",
+                                      # zlink gives logit scale for pred values
+                                      # can use plogis to transform 
+                                      # for probability pred and CI
+                                      # checked zprob gives same as plogis(zlink pred)
+                               newdata = HAb_mt_new_data,
+                              se.fit=TRUE) %>%
+                      data.frame() %>%
+                      mutate(big_tree_count = HAb_mt_new_data$big_tree_count) %>%
+                      mutate(fit_plogis = plogis(fit),
+                             conf.low_plogis = plogis(fit - 1.96*se.fit),
+                             conf.high_plogis = plogis(fit + 1.96*se.fit))
+
+
+# Conditional component
+HAb_mt_pred_conditional <- predict(HAb_model_hurdle, type="conditional",
+                                    newdata = HAb_mt_new_data,
+                                    se.fit=TRUE) %>%
+                            data.frame() %>%
+                            mutate(big_tree_count = HAb_mt_new_data$big_tree_count) %>%
+                            mutate(conf.low = (fit - qnorm(0.975) * se.fit),
+                             conf.high =(fit + qnorm(0.975) * se.fit))
+
+```
+
+
+#### 5.4.2b HAb - Mature trees on site (Probability of a zero)
+```{r}
+
+HAb_mt_predplot_hurdle <- 
+  ggplot(aes(x = big_tree_count, y= fit_plogis),
+       data = HAb_mt_pred_hurdle) +
+  geom_smooth(colour = "black") +
+  geom_ribbon(aes(ymin = conf.low_plogis,
+                  ymax = conf.high_plogis),
+              inherit.aes = TRUE,
+              linetype=2,
+              alpha=0.25) +
+  xlab("Number of mature trees in site") +
+  ylab("Probability of zero abundance") +
+  ylim(0,1) +
+  theme_bw()
+
+HAb_mt_predplot_hurdle
+```
+
+#### 5.4.2c HAb - Mature trees on site (Non-zero abundances - conditional)
+```{r}
+
+HAb_mt_predplot_conditional <- 
+  ggplot(aes(x = big_tree_count, y= fit),
+       data = HAb_mt_pred_conditional) +
+  geom_smooth(colour = "black") +
+  geom_ribbon(aes(ymin = conf.low,
+                  ymax = conf.high),
+              inherit.aes = TRUE,
+              linetype=2,
+              alpha=0.25) +
+  xlab("Number of mature trees in site") +
+  ylab("Abundance") +
+  #ylim(0,10) +
+  theme_bw()
+
+HAb_mt_predplot_conditional
+```
+
+### 5.4.3. HAb - Mature trees in 200m buffer
+#### 5.4.3a HAb - Mature trees in 200m buffer (generating predictions)
+```{r}
+# New data
+HAb_mt200_new_data <- expand.grid(area = mean(model_data_input$area),
+                                big_tree_count = mean(model_data_input$big_tree_count),
+                                mt_count_200m = seq(min(model_data_input$mt_count_200m),
+                                                     max(model_data_input$mt_count_200m),
+                                                     0.5),
+                                suburb = "Casey",
+                                site_id = NA)
+
+# Hurdle component
+HAb_mt200_pred_hurdle <- predict(HAb_model_hurdle, type="zlink",
+                                      # zlink gives logit scale for pred values
+                                      # can use plogis to transform 
+                                      # for probability pred and CI
+                                      # checked zprob gives same as plogis(zlink pred)
+                               newdata = HAb_mt200_new_data,
+                              se.fit=TRUE) %>%
+                      data.frame() %>%
+                      mutate(mt_count_200m = HAb_mt200_new_data$mt_count_200m) %>%
+                      mutate(fit_plogis = plogis(fit),
+                             conf.low_plogis = plogis(fit - 1.96*se.fit),
+                             conf.high_plogis = plogis(fit + 1.96*se.fit))
+
+
+# Conditional component
+HAb_mt200_pred_conditional <- predict(HAb_model_hurdle, type="conditional",
+                                    newdata = HAb_mt200_new_data,
+                                    se.fit=TRUE) %>%
+                            data.frame() %>%
+                            mutate(mt_count_200m = HAb_mt200_new_data$mt_count_200m) %>%
+                            mutate(conf.low = (fit - qnorm(0.975) * se.fit),
+                             conf.high =(fit + qnorm(0.975) * se.fit))
+
+```
+
+
+#### 5.4.1b HAb - Mature trees in 200m buffer (Probability of a zero)
+```{r}
+
+HAb_mt200_predplot_hurdle <- 
+  ggplot(aes(x = mt_count_200m, y= fit_plogis),
+       data = HAb_mt200_pred_hurdle) +
+  geom_smooth(colour = "black") +
+  geom_ribbon(aes(ymin = conf.low_plogis,
+                  ymax = conf.high_plogis),
+              inherit.aes = TRUE,
+              linetype=2,
+              alpha=0.25) +
+  xlab("Number of mature trees in a 200m buffer") +
+  ylab("Probability of zero abundance") +
+  ylim(0,1) +
+  theme_bw()
+
+HAb_mt200_predplot_hurdle
+```
+
+#### 5.4.1c HAb - Mature trees in 200m buffer (Non-zero abundances - conditional)
+```{r}
+
+HAb_mt200_predplot_conditional <- 
+  ggplot(aes(x = mt_count_200m, y= fit),
+       data = HAb_mt200_pred_conditional) +
+  geom_smooth(colour = "black") +
+  geom_ribbon(aes(ymin = conf.low,
+                  ymax = conf.high),
+              inherit.aes = TRUE,
+              linetype=2,
+              alpha=0.25) +
+  xlab("Number of mature trees in a 200m buffer") +
+  ylab("Abundance") +
+  #ylim(0,10) +
+  theme_bw()
+
+HAb_mt200_predplot_conditional
+```
+
+### 5.4.4. HAb - Suburb
+#### 5.4.31 HAb - Suburb (generating predictions)
+```{r}
+# New data
+HAb_suburb_new_data <- expand.grid(area = mean(model_data_input$area),
+                                big_tree_count = mean(model_data_input$big_tree_count),
+                                mt_count_200m = mean(model_data_input$mt_count_200m),
+                                suburb = unique(model_data_input$suburb),
+                                site_id = NA)
+
+# Hurdle component
+HAb_suburb_pred_hurdle <- predict(HAb_model_hurdle, type="zlink",
+                                      # zlink gives logit scale for pred values
+                                      # can use plogis to transform 
+                                      # for probability pred and CI
+                                      # checked zprob gives same as plogis(zlink pred)
+                               newdata = HAb_suburb_new_data,
+                              se.fit=TRUE) %>%
+                      data.frame() %>%
+                      mutate(suburb = HAb_suburb_new_data$suburb) %>%
+                      mutate(fit_plogis = plogis(fit),
+                             conf.low_plogis = plogis(fit - 1.96*se.fit),
+                             conf.high_plogis = plogis(fit + 1.96*se.fit))
+
+
+# Conditional component
+HAb_suburb_pred_conditional <- predict(HAb_model_hurdle, type="conditional",
+                                    newdata = HAb_suburb_new_data,
+                                    se.fit=TRUE) %>%
+                            data.frame() %>%
+                            mutate(suburb = HAb_suburb_new_data$suburb) %>%
+                            mutate(conf.low = (fit - qnorm(0.975) * se.fit),
+                             conf.high =(fit + qnorm(0.975) * se.fit))
+
+```
+
+
+#### 5.4.1a HAb - Suburb (Probability of a zero)
+```{r}
+
+HAb_suburb_predplot_hurdle <- 
+  ggplot(aes(x = suburb, y= fit_plogis),
+       data = HAb_suburb_pred_hurdle) +
+  geom_col(colour = "black",
+         fill = "grey88") +
+  geom_errorbar(aes(ymin=conf.low_plogis, ymax=conf.high_plogis), width=.2,
+                 colour = "black",
+                 position=position_dodge(.9),
+                 inherit.aes = T,
+                 data = HAb_suburb_pred_hurdle) +
+  xlab("Suburb") +
+  ylab("Probability of zero abundance") +
+  ylim(0,1) +
+  theme_bw()
+
+HAb_suburb_predplot_hurdle
+```
+
+#### 5.4.1b HAb - Suburb (Non-zero abundances - conditional)
+```{r}
+
+HAb_suburb_predplot_conditional <- 
+  ggplot(aes(x = suburb, y= fit),
+       data = HAb_suburb_pred_conditional) +
+  geom_col(colour = "black",
+         fill = "grey88") +
+  geom_errorbar(aes(ymin=conf.low, ymax=conf.high), width=.2,
+                 colour = "black",
+                 position=position_dodge(.9),
+                 inherit.aes = T,
+                 data = HAb_suburb_pred_conditional) +
+  xlab("Suburb") +
+  ylab("Abundance") +
+  #ylim(0,10) +
+  theme_bw()
+
+HAb_suburb_predplot_conditional
+```
+
+### 5.4.5. HAb - Plots together
+```{r}
+HAb_plots <- ggarrange(HAb_area_predplot_hurdle, HAb_area_predplot_conditional,
+                       HAb_mt_predplot_hurdle,HAb_mt_predplot_conditional,
+                       HAb_mt200_predplot_hurdle, HAb_mt200_predplot_conditional,
+                       HAb_suburb_predplot_hurdle,HAb_suburb_predplot_conditional,
+                        ncol = 2, nrow=4)
+
+
+HAb_final <- annotate_figure(HAb_plots, top = text_grob("Hollow-dependent species abundance", 
+               color = "black", face = "bold", size = 14))
+
+HAb_final
+
+
+```
+
+
+
+
+
+# 6. Arrangeing and Formatting Plots for Publication or Presentations
+## 6.1. SR
+```{r}
+SR_mt_presplot <- SR_mt_predplot +
+  theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))
+
+SR_area_presplot <- SR_area_predplot +
+    theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))
+
+
+SR_presplots <- ggarrange(SR_mt_presplot, SR_area_presplot, ncol =2)
+
+
+SR_presplots_ann <- annotate_figure(SR_presplots, top = text_grob("Species richness", 
+               color = "black", face = "bold", size = 22))  +
+                theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+
+SR_presplots_ann
+```
+
+## 6.2. Ab
+```{r}
+Ab_area_presplot_hurdle <- Ab_area_predplot_hurdle +
+  theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black")) +
+         theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+
+Ab_area_presplot_conditional <- Ab_area_predplot_conditional +
+  theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))+
+         theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+
+
+Ab_presplots <- ggarrange(Ab_area_presplot_hurdle,Ab_area_presplot_conditional)
+
+
+Ab_presplots_ann <- annotate_figure(Ab_presplots, top = text_grob("Abundance", 
+               color = "black", face = "bold", size = 22)) +
+                theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+
+Ab_presplots_ann
+
+```
+
+
+```{r}
+SRnAB_presplots <- ggarrange(SR_presplots_ann, Ab_presplots_ann, ncol =1)
+
+
+SRnAB_presplots
+
+```
+
+## 6.3. HSR
+```{r}
+HSR_mt_presplot <- HSR_mt_predplot +
+    theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))
+
+HSR_suburb_presplot <- HSR_suburb_predplot +
+    theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))
+
+
+HSR_presplots <- ggarrange(HSR_mt_presplot,HSR_suburb_presplot, ncol = 2)
+
+HSR_presplots_ann <- annotate_figure(HSR_presplots, top = text_grob("Hollow-dependent species richness", 
+               color = "black", face = "bold", size = 22))
+
+HSR_presplots_ann
+
+```
+
+## 6.4. HAb
+```{r}
+
+HAb_area_presplot_hurdle <- HAb_area_predplot_hurdle +
+    theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))
+
+HAb_area_presplot_conditional <- HAb_area_predplot_conditional +
+    theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))
+                       
+HAb_mt_presplot_hurdle <- HAb_mt_predplot_hurdle +
+    theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))
+
+HAb_mt_presplot_conditional <- HAb_mt_predplot_conditional +
+    theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))
+                       
+HAb_mt200_presplot_hurdle <- HAb_mt200_predplot_hurdle +
+    theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))
+
+HAb_mt200_presplot_conditional <- HAb_mt200_predplot_conditional +
+    theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))
+
+                       
+HAb_suburb_presplot_hurdle <- HAb_suburb_predplot_hurdle +
+    theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))
+
+HAb_suburb_presplot_conditional <- HAb_suburb_predplot_conditional +
+    theme( panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'),
+         panel.border = element_rect(colour = "black", linewidth = 2),
+         text = element_text(size = 20, colour = "black"))
+
+
+
+HAb_presplots <- ggarrange(HAb_area_presplot_hurdle, HAb_area_presplot_conditional,
+                       HAb_mt_presplot_hurdle,HAb_mt_presplot_conditional,
+                       HAb_mt200_presplot_hurdle, HAb_mt200_presplot_conditional,
+                       HAb_suburb_presplot_hurdle,HAb_suburb_presplot_conditional,
+                        ncol = 2, nrow=4)
+
+
+HAb_presplots_ann <- annotate_figure(HAb_presplots, top = text_grob("Hollow-dependent species abundance", 
+               color = "black", face = "bold", size = 22))
+
+HAb_presplots_ann
+
+```
+## 6.5. Save Plots as EPS and PNG
+```{r}
+
+# Figure 1
+ggsave("./analysis_outputs/result_plots/Fig1_SRnAB_plot.eps", 
+       plot = SRnAB_presplots, 
+       width = 12, height = 8,
+       device=cairo_ps,
+       bg = "white")
+
+# Figure 2
+ggsave("./analysis_outputs/result_plots/Fig2_HSR_plot.eps", 
+       plot = HSR_presplots_ann,
+       width = 12, height = 4,
+       device=cairo_ps,
+       bg = "white")
+
+
+# Figure 3
+ggsave("./analysis_outputs/result_plots/Fig3_HAb_plot.eps", 
+       plot = HAb_presplots_ann,
+       width = 12, height = 18,
+       device=cairo_ps,
+       bg = "white")
+
+
+# pngs
+# Figure 1
+ggsave("./analysis_outputs/result_plots/Fig1_SRnAB_plot.png", 
+       plot = SRnAB_presplots, 
+       width = 12, height = 8,
+       bg = "white")
+
+# Figure 2
+ggsave("./analysis_outputs/result_plots/Fig2_HSR_plot.png", 
+       plot = HSR_presplots_ann,
+       width = 12, height = 4,
+       bg = "white")
+
+
+# Figure 3
+ggsave("./analysis_outputs/result_plots/Fig3_HAb_plot.png", 
+       plot = HAb_presplots_ann,
+       width = 12, height = 18,
+       bg = "white")
+
+
+```
+
+
+# 7. Save coefficient outputs
+## 7.1. SR
+```{r}
+tab_model(SR_model,
+          transform = NULL,
+          show.intercept = TRUE,
+          show.ci = FALSE,
+          show.se = TRUE,
+          show.aic = TRUE,
+          dv.labels = "Species richness",
+          string.pred = "Predictors (Scaled)",
+          string.est = "Estimate",
+          string.se = "Standard error",
+          string.p = "p-value",
+          file = "./analysis_outputs/model_statistics/coefficient_SR_output_table.doc")
+```
+
+## 7.2. Ab
+```{r}
+tab_model(Ab_model_hurdle,
+          transform = NULL,
+          show.intercept = TRUE,
+          show.ci = FALSE,
+          show.se = TRUE,
+          show.aic = TRUE,
+          dv.labels = "Overall abundance",
+          string.pred = "Predictors (Scaled)",
+          string.est = "Estimate",
+          string.se = "Standard error",
+          string.p = "p-value",
+          file = "./analysis_outputs/model_statistics/coefficient_Ab_output_table.doc")
+```
+## 7.3. HSR
+```{r}
+tab_model(HSR_model,
+          transform = NULL,
+          show.intercept = TRUE,
+          show.ci = FALSE,
+          show.se = TRUE,
+          show.aic = TRUE,
+          dv.labels = "Hollow-dependent species richness",
+          string.pred = "Predictors (Scaled)",
+          string.est = "Estimate",
+          string.se = "Standard error",
+          string.p = "p-value",
+          file = "./analysis_outputs/model_statistics/coefficient_HSR_output_table.doc")
+```
+
+## 7.4. HAb
+```{r}
+tab_model(HAb_model_hurdle,
+          transform = NULL,
+          show.intercept = TRUE,
+          show.ci = FALSE,
+          show.se = TRUE,
+          show.aic = TRUE,
+          dv.labels = "Hollow-dependent species abundance",
+          string.pred = "Predictors (Scaled)",
+          string.est = "Estimate",
+          string.se = "Standard error",
+          string.p = "p-value",
+          file = "./analysis_outputs/model_statistics/coefficient_HAb_output_table.doc")
+```
+
