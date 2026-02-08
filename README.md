@@ -1,11 +1,11 @@
-# Data and Codes associated with Manuscript: Mature trees are important for birds in urban landscapes (in prep)
+# Mature trees are important for birds in urban landscapes (in prep)
 Authors: CKL Yong CKL, SKY Lum, P Gibbons
 
 Aim: Evaluating the effectiveness of retaining mature trees for avian diversity in urban areas. 
 
 This repository contains a data set of bird diversity indicators measured in 36 sites across three suburbs in Canberra, Australia. Three surveys were conducted per site. Site and landscape level features were included as predictors. Refer to the manuscript for detailed methods.
 
-## Data Description:
+## Data Description: cleaned_model_data.csv
 ### Survey Variables
 * site_id
 * survey_no
