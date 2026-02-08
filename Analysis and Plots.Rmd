@@ -891,7 +891,7 @@ HAb_final
 
 
 
-# 6. Arrangeing and Formatting Plots for Publication or Presentations
+# 6. Arranging and Formatting Plots for Publication or Presentations
 ## 6.1. SR
 ```{r}
 SR_mt_presplot <- SR_mt_predplot +
@@ -1214,4 +1214,5 @@ tab_model(HAb_model_hurdle,
           string.p = "p-value",
           file = "./analysis_outputs/model_statistics/coefficient_HAb_output_table.doc")
 ```
+
 
