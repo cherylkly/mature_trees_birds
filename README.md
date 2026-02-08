@@ -3,7 +3,7 @@ Authors: CKL Yong CKL, SKY Lum, P Gibbons
 
 Aim: Evaluating the effectiveness of retaining mature trees for avian diversity in urban areas. 
 
-This repository contains a data set of bird diversity indicators measured across 36 sites in 3 surveys. Site and landscape level features are included as predictors.
+This repository contains a data set of bird diversity indicators measured in 36 sites across three suburbs in Canberra, Australia. Three surveys were conducted per site. Site and landscape level features were included as predictors. Refer to the manuscript for detailed methods.
 
 ## Data Description:
 ### Survey Variables
