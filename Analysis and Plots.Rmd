@@ -621,7 +621,7 @@ HAb_area_predplot_conditional <-
               alpha=0.25) +
   xlab("Stand area (ha)") +
   ylab("Abundance") +
-  #ylim(0,1) +
+  ylim(-0.1,10) +
   theme_bw()
 
 HAb_area_predplot_conditional
@@ -701,7 +701,7 @@ HAb_mt_predplot_conditional <-
               alpha=0.25) +
   xlab("Number of mature trees within a stand") +
   ylab("Abundance") +
-  #ylim(0,10) +
+  ylim(-0.1,10) +
   theme_bw()
 
 HAb_mt_predplot_conditional
@@ -780,7 +780,7 @@ HAb_mt200_predplot_conditional <-
               alpha=0.25) +
   xlab("Number of mature trees in a 200m buffer") +
   ylab("Abundance") +
-  #ylim(0,10) +
+  ylim(-0.1,10) +
   theme_bw()
 
 HAb_mt200_predplot_conditional
@@ -859,7 +859,7 @@ HAb_suburb_predplot_conditional <-
                  data = HAb_suburb_pred_conditional) +
   xlab("Suburb") +
   ylab("Abundance") +
-  #ylim(0,10) +
+  ylim(-0.1,10) +
   theme_bw()
 
 HAb_suburb_predplot_conditional
