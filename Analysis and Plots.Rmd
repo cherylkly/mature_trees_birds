@@ -54,7 +54,7 @@ Outcome Variables
 
 
 Predictor Variables:
-* big_tree_count:       Number of mature trees within the site
+* big_tree_count:       Number of mature trees within the stand
 * rw_pres:              Presence of red wattlebird
 * p_ground_grass:       Vegetation cover between 0-0.1m in height (%)
 * p_low_shrubs:         Vegetation cover between 0.1-1m in height (%)
@@ -68,7 +68,7 @@ Predictor Variables:
 
 
 Predictors excluded from model due to high correlation:
-* total_tree_count:   Number of trees within the site
+* total_tree_count:   Number of trees within the stand
 * hollow_count:       Number of tree hollows
 * shape_idx:          Shape Index
 * road_traffic:       Largest adjacent road type
@@ -316,7 +316,7 @@ SR_mt_predplot <-
               inherit.aes = TRUE,
               linetype=2,
               alpha=0.25) +
-  xlab("Number of mature trees in site") +
+  xlab("Number of mature trees within a stand") +
   ylab("Richness") +
   ylim(0,10) +
   theme_bw()
@@ -341,8 +341,7 @@ SR_area_predplot <-
               inherit.aes = TRUE,
               linetype=2,
               alpha=0.25) +
-  xlab("Site area (ha) ") +
-  #xlab(bquote("Site area " (m^2))) +
+  xlab("Stand area (ha)") +
   ylab("Richness") +
   ylim(0,10) +
   theme_bw()
@@ -422,8 +421,7 @@ Ab_area_predplot_hurdle <-
               inherit.aes = TRUE,
               linetype=2,
               alpha=0.25) +
-  xlab("Site area (ha) ") +
-  #xlab(bquote("Site area " (m^2))) +
+  xlab("Stand area (ha)") +
   ylab("Probability of zero abundance") +
   ylim(0,1) +
   theme_bw()
@@ -443,8 +441,7 @@ Ab_area_predplot_conditional <-
               inherit.aes = TRUE,
               linetype=2,
               alpha=0.25) +
-  xlab("Site area (ha) ") +
-  #xlab(bquote("Site area " (m^2))) +
+  xlab("Stand area (ha)") +
   ylab("Abundance") +
   #ylim(0,1) +
   theme_bw()
@@ -498,7 +495,7 @@ HSR_mt_predplot <-
               inherit.aes = TRUE,
               linetype=2,
               alpha=0.25) +
-  xlab("Number of mature trees in site") +
+  xlab("Number of mature trees within a stand") +
   ylab("Richness") +
   ylim(0,16) +
   theme_bw()
@@ -531,7 +528,7 @@ HSR_suburb_predplot <-
                  data = HSR_suburb_pred) +
   xlab("Suburb") +
   ylab("Richness") +
-  ylim(0,5) +
+  ylim(0,16) +
   #labs(colour = "Suburb") +
   theme_bw()
 
@@ -602,8 +599,7 @@ HAb_area_predplot_hurdle <-
               inherit.aes = TRUE,
               linetype=2,
               alpha=0.25) +
-  xlab("Site area (ha) ") +
-  #xlab(bquote("Site area " (m^2))) +
+  xlab("Stand area (ha)") +
   ylab("Probability of zero abundance") +
   ylim(0,1) +
   theme_bw()
@@ -623,16 +619,15 @@ HAb_area_predplot_conditional <-
               inherit.aes = TRUE,
               linetype=2,
               alpha=0.25) +
-  xlab("Site area (ha) ") +
-  #xlab(bquote("Site area " (m^2))) +
+  xlab("Stand area (ha)") +
   ylab("Abundance") +
   #ylim(0,1) +
   theme_bw()
 
 HAb_area_predplot_conditional
 ```
-### 5.4.2. HAb - Mature trees on site
-#### 5.4.21 HAb - Mature trees on site (generating predictions)
+### 5.4.2. HAb - Mature trees within a stand
+#### 5.4.21 HAb - Mature trees within a stand (generating predictions)
 ```{r}
 # New data
 HAb_mt_new_data <- expand.grid(area = mean(model_data_input$area),
@@ -672,7 +667,7 @@ HAb_mt_pred_conditional <- predict(HAb_model_hurdle, type="conditional",
 ```
 
 
-#### 5.4.2b HAb - Mature trees on site (Probability of a zero)
+#### 5.4.2b HAb - Mature trees within a stand (Probability of a zero)
 ```{r}
 
 HAb_mt_predplot_hurdle <- 
@@ -684,7 +679,7 @@ HAb_mt_predplot_hurdle <-
               inherit.aes = TRUE,
               linetype=2,
               alpha=0.25) +
-  xlab("Number of mature trees in site") +
+  xlab("Number of mature trees within a stand") +
   ylab("Probability of zero abundance") +
   ylim(0,1) +
   theme_bw()
@@ -692,7 +687,7 @@ HAb_mt_predplot_hurdle <-
 HAb_mt_predplot_hurdle
 ```
 
-#### 5.4.2c HAb - Mature trees on site (Non-zero abundances - conditional)
+#### 5.4.2c HAb - Mature trees within a stand (Non-zero abundances - conditional)
 ```{r}
 
 HAb_mt_predplot_conditional <- 
@@ -704,7 +699,7 @@ HAb_mt_predplot_conditional <-
               inherit.aes = TRUE,
               linetype=2,
               alpha=0.25) +
-  xlab("Number of mature trees in site") +
+  xlab("Number of mature trees within a stand") +
   ylab("Abundance") +
   #ylim(0,10) +
   theme_bw()
@@ -1127,22 +1122,22 @@ ggsave("./analysis_outputs/result_plots/Fig3_HAb_plot.eps",
        bg = "white")
 
 
-# pngs
+# jpegs
 # Figure 1
-ggsave("./analysis_outputs/result_plots/Fig1_SRnAB_plot.png", 
+ggsave("./analysis_outputs/result_plots/Fig1_SRnAB_plot.jpg", 
        plot = SRnAB_presplots, 
        width = 12, height = 8,
        bg = "white")
 
 # Figure 2
-ggsave("./analysis_outputs/result_plots/Fig2_HSR_plot.png", 
+ggsave("./analysis_outputs/result_plots/Fig2_HSR_plot.jpg", 
        plot = HSR_presplots_ann,
        width = 12, height = 4,
        bg = "white")
 
 
 # Figure 3
-ggsave("./analysis_outputs/result_plots/Fig3_HAb_plot.png", 
+ggsave("./analysis_outputs/result_plots/Fig3_HAb_plot.jpg", 
        plot = HAb_presplots_ann,
        width = 12, height = 18,
        bg = "white")
@@ -1214,5 +1209,4 @@ tab_model(HAb_model_hurdle,
           string.p = "p-value",
           file = "./analysis_outputs/model_statistics/coefficient_HAb_output_table.doc")
 ```
-
 
