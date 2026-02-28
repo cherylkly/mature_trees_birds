@@ -3,12 +3,12 @@ Authors: CKL Yong CKL, SKY Lum, P Gibbons
 
 Aim: Evaluating the effectiveness of retaining mature trees for bird diversity in urban areas. 
 
-This repository contains a data set of bird diversity indicators measured in 36 sites across three suburbs in Canberra, Australia. Three surveys were conducted per site. Site and landscape level features were included as predictors. Refer to the manuscript for detailed methods.
+This repository contains a data set of bird diversity indicators measured in 36 stands across three suburbs in Canberra, Australia. Three surveys were conducted per stand. Site and landscape level features were included as predictors. Refer to the manuscript for detailed methods.
 
 ## Data Description: cleaned_model_data.csv
 ### Survey Variables
-* site_id
-* survey_no
+* site_id     Stand identification
+* survey_no   Survey number (three surveys were conducted)
 
 ### Outcome Variables
 * sp_rich               Overall species richness
@@ -18,7 +18,7 @@ This repository contains a data set of bird diversity indicators measured in 36 
 
 
 ### Predictor Variables:
-* big_tree_count:       Number of mature trees within the site
+* big_tree_count:       Number of mature trees within a stand
 * rw_pres:              Presence of red wattlebird
 * p_ground_grass:       Vegetation cover between 0-0.1m in height (%)
 * p_low_shrubs:         Vegetation cover between 0.1-1m in height (%)
@@ -30,10 +30,10 @@ This repository contains a data set of bird diversity indicators measured in 36 
 * suburb:               Suburb
 * dev_status:           Development status
 
-Note: Presence of noisy miner was not included as no noisy miners were observed across all sites
+Note: Presence of noisy miner was not included as no noisy miners were observed across all stands.
 
 ### Predictors excluded from model due to high correlation:
-* total_tree_count:   Number of trees within the site
+* total_tree_count:   Number of trees within a stand
 * hollow_count:       Number of tree hollows
 * shape_idx:          Shape Index
 * road_traffic:       Largest adjacent road type
